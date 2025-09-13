@@ -1,0 +1,26 @@
+flowchart TD
+
+%% Classes for styling
+classDef role fill:#F1F0FF,stroke:#6B5B95,stroke-width:1px,color:#333
+classDef svc fill:#F0FFF4,stroke:#2F855A,stroke-width:1px,color:#333
+classDef event fill:#EBF8FF,stroke:#3182CE,stroke-width:1px,color:#333
+
+subgraph Sales Agent Role
+  S1[Login → JWT]:::role
+  S2[Create Customer\nPOST /api/customers\nadds sales_agent_id]:::svc
+  S3[Registration Notification\nvia WebSocket]:::event
+  S4[List Own Customers\nGET /api/customers?role=sales]:::svc
+  S5[View/Update Own Customer\nGET/PUT /api/customers/:id\nownership enforced]:::svc
+  S6[Send SMS to Customer\nPOST /api/customers/:id/notify\nready, delay, pickup, custom]:::svc
+  S7[Export Customers\nExcel/PDF/Sheets]:::svc
+  S8[Sales Stats\nGET /api/customers/stats/sales-agent]:::svc
+end
+
+S1 --> S2
+S2 --> S3
+S1 --> S4 --> S5
+S1 --> S6
+S1 --> S7
+S1 --> S8
+
+N2[Notes:\n- Sales agents cannot create transactions or change queue statuses\n- Ownership middleware restricts access to only their customers]:::event

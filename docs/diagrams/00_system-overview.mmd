@@ -1,0 +1,97 @@
+flowchart TD
+
+%% Classes for styling
+classDef role fill:#F1F0FF,stroke:#6B5B95,stroke-width:1px,color:#333
+classDef svc fill:#F0FFF4,stroke:#2F855A,stroke-width:1px,color:#333
+classDef infra fill:#FFF9DB,stroke:#B7791F,stroke-width:1px,color:#333
+classDef risky fill:#FFF5F5,stroke:#E53E3E,stroke-width:2px,color:#333
+classDef event fill:#EBF8FF,stroke:#3182CE,stroke-width:1px,color:#333
+
+%% Roles
+subgraph Roles
+  A_ADMIN[Admin]:::role
+  A_SALES[Sales Agent]:::role
+  A_CASHIER[Cashier]:::role
+end
+
+%% Backend services
+subgraph Backend Services
+  S_AUTH[Auth API\nPOST /api/auth/login; POST /refresh]:::svc
+  S_CUSTOMERS[Customers API\nPOST/GET/PUT /api/customers/...]:::svc
+  S_QUEUE[Queue API\nGET/POST/PATCH /api/queue/...]:::svc
+  S_TRANSACTIONS[Transactions API\nPOST/GET /api/transactions/...]:::svc
+  S_ITEMS[Transaction Items\n/api/transactions/:id/items]:::svc
+  S_SETTLEMENTS[Payment Settlements\n/api/transactions/:id/settlements]:::svc
+  S_ADMIN[Admin Ops\n/api/admin/...]:::svc
+  S_ANALYTICS[Analytics & Reports\n/api/transactions/reports/*; /api/analytics/*]:::svc
+  S_NOTIF[Notification Service\nSMS templates/logs]:::svc
+  S_COUNTERS[Counters Service]:::svc
+end
+
+%% Infra
+subgraph Infrastructure
+  DB[(PostgreSQL)]:::infra
+  WS[WebSocket Gateway\nreal-time queue/transactions/notifications]:::infra
+end
+
+%% Auth flow
+A_ADMIN -->|Login| S_AUTH
+A_SALES -->|Login| S_AUTH
+A_CASHIER -->|Login| S_AUTH
+S_AUTH -->|JWT tokens| A_ADMIN
+S_AUTH -->|JWT tokens| A_SALES
+S_AUTH -->|JWT tokens| A_CASHIER
+S_AUTH --> DB
+
+%% Sales Agent main flow
+A_SALES -->|Create customer\nPOST /customers| S_CUSTOMERS
+S_CUSTOMERS --> DB
+S_CUSTOMERS -->|Emit registration notification| WS
+WS -->|Notify| A_CASHIER
+A_SALES -->|List own customers\nGET /customers?salesAgentId=self| S_CUSTOMERS
+A_SALES -->|Notify customer\nPOST /customers/:id/notify| S_NOTIF
+S_NOTIF --> DB
+
+%% Cashier flow
+A_CASHIER -->|View queue\nGET /queue| S_QUEUE
+S_QUEUE --> DB
+A_CASHIER -->|Call next/specific\nPOST /queue/call-next, /call-customer| S_QUEUE
+S_QUEUE -->|status: waiting→serving| DB
+S_QUEUE --> WS
+A_CASHIER -->|Change status\nPOST/PATCH /queue/change-status or /:id/status| S_QUEUE
+S_QUEUE -->|serving→processing→completed| DB
+A_CASHIER -->|Create transaction\nPOST /transactions| S_TRANSACTIONS
+S_TRANSACTIONS --> DB
+A_CASHIER -->|Add items\nPOST /transactions/:id/items| S_ITEMS
+S_ITEMS --> DB
+A_CASHIER -->|Record settlement\nPOST /transactions/:id/settlements| S_SETTLEMENTS
+S_SETTLEMENTS --> DB
+S_TRANSACTIONS --> WS
+WS -->|Payment status updates| A_CASHIER
+
+%% Admin flow
+A_ADMIN -->|User management\nCRUD /users| S_ADMIN
+S_ADMIN --> DB
+A_ADMIN -->|Dropdowns grade/lens\n/admin/*types| S_ADMIN
+S_ADMIN --> DB
+A_ADMIN -->|Counters mgmt\n/admin/counters| S_ADMIN
+S_ADMIN --> DB
+A_ADMIN -->|SMS templates/logs\n/admin/sms-templates, /admin/notification-logs| S_ADMIN
+S_ADMIN --> DB
+A_ADMIN -->|Analytics & reports\nGET /transactions/reports/*, /analytics/*| S_ANALYTICS
+S_ANALYTICS --> DB
+A_ADMIN -->|Daily report generate/delete\nPOST/DELETE /transactions/reports/daily| S_TRANSACTIONS
+S_TRANSACTIONS --> DB
+A_ADMIN -->|Fix transactions, Queue reset| S_ADMIN
+S_ADMIN --> DB
+S_ADMIN:::risky
+
+%% Real-time updates
+S_QUEUE --> WS
+S_TRANSACTIONS --> WS
+WS -->|Queue updates| A_CASHIER
+WS -->|Display monitor| S_COUNTERS
+S_COUNTERS --> DB
+
+%% Legend
+LEGEND[Legend\n- Purple: Role\n- Green: Service\n- Yellow: Infra\n- Red border: Admin-only sensitive ops]:::event

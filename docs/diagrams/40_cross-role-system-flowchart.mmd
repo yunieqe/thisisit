@@ -1,0 +1,120 @@
+flowchart LR
+
+%% Classic System Flowchart styling
+classDef role fill:#F1F0FF,stroke:#6B5B95,stroke-width:1px,color:#333
+classDef proc fill:#F0FFF4,stroke:#2F855A,stroke-width:1px,color:#333
+classDef store fill:#FFF9DB,stroke:#B7791F,stroke-width:1px,color:#333
+classDef risky fill:#FFF5F5,stroke:#E53E3E,stroke-width:2px,color:#333
+classDef infra fill:#FFF9DB,stroke:#B7791F,stroke-width:1px,color:#333
+classDef term fill:#E6FFFA,stroke:#2C7A7B,stroke-width:1px,color:#333
+classDef decision fill:#FFF5F5,stroke:#C53030,stroke-width:1px,color:#333
+
+START([Start]):::term
+LOGIN[Login]:::proc
+AUTH{Authentication valid?}:::decision
+ROLE{Role?}:::decision
+END([End]):::term
+
+WS[WebSocket Bus]:::infra
+DB[(PostgreSQL)]:::store
+
+START --> LOGIN --> AUTH
+AUTH -- No --> END
+AUTH -- Yes --> ROLE
+
+subgraph SALES[Sales Agent]
+  direction TB
+  S_DASH[Sales Dashboard]:::proc
+S_CREATE[Create customer POST /customers]:::proc
+  S_EXISTING{Existing customer?}:::decision
+S_VIEW[View or update customer GET or PUT]:::proc
+  S_SMS[Send SMS notifications]:::proc
+  S_EXPORT[Export customers]:::proc
+  S_STATS[View sales stats]:::proc
+  ROLE -- Sales --> S_DASH
+  S_DASH --> S_CREATE --> DB
+  S_CREATE --> WS
+  S_CREATE --> S_EXISTING
+  S_EXISTING -- Yes --> S_VIEW --> DB --> S_DASH
+  S_EXISTING -- No --> S_DASH
+  S_DASH --> S_SMS --> DB
+  S_DASH --> S_EXPORT --> DB
+  S_DASH --> S_STATS --> DB
+end
+
+subgraph CASHIER[Cashier]
+  direction TB
+  C_DASH[Cashier Dashboard]:::proc
+C_QUEUE[View queue GET /queue]:::proc
+  C_EMPTY{Queue empty?}:::decision
+  C_CALL[Call next/specific customer]:::proc
+C_STATUS[Update status: waiting -> serving -> processing -> completed]:::proc
+C_TXN[Create transaction POST /transactions]:::proc
+C_ITEMS[Manage items POST or PUT or DELETE]:::proc
+  C_PAY_METHOD{Payment method?}:::decision
+C_SETTLE[Record settlement POST /settlements]:::proc
+  C_OK{Settlement successful?}:::decision
+  C_LIST[List/filter transactions]:::proc
+  C_EXPORT[Export transactions]:::proc
+  ROLE -- Cashier --> C_DASH
+  C_DASH --> C_QUEUE --> DB
+  C_QUEUE --> C_EMPTY
+  C_EMPTY -- Yes --> C_DASH
+  C_EMPTY -- No --> C_CALL --> DB
+  C_CALL --> WS
+  C_CALL --> C_STATUS --> DB
+  C_STATUS --> WS
+  C_STATUS --> C_TXN --> DB
+  C_TXN --> C_ITEMS --> DB
+  C_ITEMS --> C_PAY_METHOD
+  C_PAY_METHOD -- Cash/Card/Digital --> C_SETTLE --> DB
+  C_SETTLE --> C_OK
+  C_OK -- Yes --> C_STATUS --> DB
+  C_OK -- No --> C_SETTLE
+  C_DASH --> C_LIST --> DB
+  C_DASH --> C_EXPORT --> DB
+end
+
+subgraph ADMIN[Admin / Super Admin]
+  direction TB
+  A_DASH[Admin Dashboard]:::proc
+  A_USERS[User management CRUD]:::proc
+A_DROPS[Dropdown management grade and lens types]:::proc
+  A_COUNTERS[Counter management]:::proc
+  A_SMS[SMS templates & notification logs]:::proc
+A_ACT[Activity logs read only]:::proc
+  A_ANALYTICS[Analytics dashboards]:::proc
+  A_REPORTS[Generate reports]:::proc
+  A_FIX[Fix transactions]:::risky
+  A_FIX_CONFIRM{Confirm fix transactions?}:::decision
+A_RESET[Queue reset admin only]:::risky
+  A_RESET_CONFIRM{Confirm queue reset?}:::decision
+A_HEALTH[System health GET /healthz]:::proc
+  ROLE -- Admin/Super Admin --> A_DASH
+  A_DASH --> A_USERS --> DB
+  A_DASH --> A_DROPS --> DB
+  A_DASH --> A_COUNTERS --> DB
+  A_DASH --> A_SMS --> DB
+  A_DASH --> A_ACT --> DB
+  A_DASH --> A_ANALYTICS --> DB
+  A_DASH --> A_REPORTS --> DB
+  A_DASH --> A_FIX --> A_FIX_CONFIRM
+  A_FIX_CONFIRM -- Yes --> DB --> A_DASH
+  A_FIX_CONFIRM -- No --> A_DASH
+  A_DASH --> A_RESET --> A_RESET_CONFIRM
+  A_RESET_CONFIRM -- Yes --> DB --> A_DASH
+  A_RESET_CONFIRM -- No --> A_DASH
+  A_DASH --> A_HEALTH --> A_DASH
+end
+
+%% Cross-role interactions
+S_CREATE -. customer registered .-> WS
+WS -. queue updates .-> C_QUEUE
+C_SETTLE -. payment status .-> WS
+WS -. analytics refresh .-> A_ANALYTICS
+
+%% Close
+SALES -->|Back to| END
+CASHIER -->|Back to| END
+ADMIN -->|Back to| END
+

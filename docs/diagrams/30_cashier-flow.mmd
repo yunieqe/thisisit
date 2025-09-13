@@ -1,0 +1,27 @@
+flowchart TD
+
+%% Classes for styling
+classDef role fill:#F1F0FF,stroke:#6B5B95,stroke-width:1px,color:#333
+classDef svc fill:#F0FFF4,stroke:#2F855A,stroke-width:1px,color:#333
+classDef event fill:#EBF8FF,stroke:#3182CE,stroke-width:1px,color:#333
+
+subgraph Cashier Role
+  C1[Login → JWT]:::role
+  C2[View Dashboard\nQueue + Daily Stats]:::event
+  C3[View Queue\nGET /api/queue]:::svc
+  C4[Call Next/Specific\nPOST /queue/call-next or /queue/call-customer]:::svc
+  C5[Change Status\nwaiting→serving→processing→completed\nPOST/PATCH /queue/change-status or /:id/status]:::svc
+  C6[Complete/Cancel Service\nPOST /queue/complete or /cancel]:::svc
+  C7[Create Transaction\nPOST /api/transactions]:::svc
+  C8[Manage Items\nPOST/PUT/DELETE /transactions/:id/items]:::svc
+  C9[Record Settlement\nPOST /transactions/:id/settlements]:::svc
+  C10[List/Filter Transactions\nGET /api/transactions]:::svc
+  C11[Exports\nPOST /transactions/export]:::svc
+end
+
+C1 --> C2
+C1 --> C3 --> C4 --> C5 --> C6
+C1 --> C7 --> C8 --> C9
+C1 --> C10 --> C11
+
+N3[Notes:\n- Cashiers cannot perform admin-only tasks; no user, dropdown, or counter management\n- Cashiers cannot reorder the queue unless via admin action\n- Real-time updates received via WebSocket\n- Payment status auto-updates after settlements]:::event

@@ -1,0 +1,54 @@
+flowchart TD
+
+%% System Flowchart styling
+classDef role fill:#F1F0FF,stroke:#6B5B95,stroke-width:1px,color:#333
+classDef proc fill:#F0FFF4,stroke:#2F855A,stroke-width:1px,color:#333
+classDef store fill:#FFF9DB,stroke:#B7791F,stroke-width:1px,color:#333
+classDef risky fill:#FFF5F5,stroke:#E53E3E,stroke-width:2px,color:#333
+classDef infra fill:#FFF9DB,stroke:#B7791F,stroke-width:1px,color:#333
+classDef term fill:#E6FFFA,stroke:#2C7A7B,stroke-width:1px,color:#333
+classDef decision fill:#FFF5F5,stroke:#C53030,stroke-width:1px,color:#333
+
+START([Start]):::term
+AGENT[/Sales Agent/]:::role
+END([End]):::term
+
+DB[(PostgreSQL)]:::store
+WS[WebSocket notifications]:::infra
+
+LOGIN[Login]:::proc
+AUTH{Authentication valid?}:::decision
+RBAC{Role is Sales?}:::decision
+DASH[Sales Dashboard]:::proc
+
+P_CREATE[Create customer POST /customers]:::proc
+EXISTING{Existing customer?}:::decision
+P_LIST[List own customers GET /customers]:::proc
+P_VIEW[View or update own customer GET or PUT]:::proc
+P_SMS[Send SMS notifications]:::proc
+P_EXPORT[Export customers Excel PDF Sheets]:::proc
+P_STATS[View sales statistics]:::proc
+ERROR[Show error message]:::proc
+
+START --> LOGIN --> AUTH
+AUTH -- No --> ERROR --> END
+AUTH -- Yes --> RBAC
+RBAC -- No --> ERROR --> END
+RBAC -- Yes --> DASH
+
+DASH --> P_CREATE --> DB
+P_CREATE --> WS
+P_CREATE --> EXISTING
+EXISTING -- Yes --> P_VIEW --> DB --> DASH
+EXISTING -- No --> DASH
+
+DASH --> P_LIST --> DB
+DASH --> P_VIEW --> DB
+DASH --> P_SMS --> DB
+DASH --> P_EXPORT --> DB
+DASH --> P_STATS --> DB
+
+DASH --> END
+
+%% Legend
+LEGEND[Legend\nTerminal: Stadium Start and End\nDecision: Diamond\nProcess: Rectangle\nData store: Cylinder\nInfra: Yellow box]

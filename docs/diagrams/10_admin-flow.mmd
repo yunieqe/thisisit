@@ -1,0 +1,44 @@
+flowchart TD
+
+%% Classes for styling
+classDef role fill:#F1F0FF,stroke:#6B5B95,stroke-width:1px,color:#333
+classDef svc fill:#F0FFF4,stroke:#2F855A,stroke-width:1px,color:#333
+classDef risky fill:#FFF5F5,stroke:#E53E3E,stroke-width:2px,color:#333
+classDef event fill:#EBF8FF,stroke:#3182CE,stroke-width:1px,color:#333
+
+%% Swimlane: Admin
+subgraph Admin Role
+  A1[Login → JWT]:::role
+  A2[Open Admin Panel]:::role
+  A3[User Management\nPOST/GET/PUT/DELETE /api/users]:::svc
+  A4[Dropdowns Grade/Lens\n/admin/*types CRUD]:::svc
+  A5[Counter Management\n/admin/counters CRUD]:::svc
+  A6[SMS Templates\n/admin/sms-templates CRUD]:::svc
+  A7[Notification Logs\nGET /admin/notification-logs]:::svc
+  A8[Activity Logs\nGET/DELETE /admin/activity-logs]:::svc
+  A9[Analytics Dashboards\nGET /api/analytics/*]:::svc
+  A10[Reports Daily/Weekly/Monthly\nGET/POST/DELETE]:::svc
+  A11[Fix Transactions]:::svc
+  A12[Queue Reset]:::svc
+  A13[System Health\nGET /admin/health]:::svc
+end
+
+A1 --> A2
+A2 --> A3
+A2 --> A4
+A2 --> A5
+A2 --> A6
+A2 --> A7
+A2 --> A8
+A2 --> A9
+A2 --> A10
+A2 --> A11
+A2 --> A12
+A2 --> A13
+
+%% Risky operations
+A11:::risky
+A12:::risky
+
+%% Notes
+N1[Notes:\n- Creating users is limited to roles: sales, cashier\n- Deleting users checks related dependencies such as transactions\n- Analytics/reporting is read-heavy; daily report can be generated and deleted\n- Queue reset cancels waiting and completes serving customers]:::event

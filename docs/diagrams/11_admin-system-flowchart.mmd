@@ -1,0 +1,70 @@
+flowchart TD
+
+%% System Flowchart styling
+classDef role fill:#F1F0FF,stroke:#6B5B95,stroke-width:1px,color:#333
+classDef proc fill:#F0FFF4,stroke:#2F855A,stroke-width:1px,color:#333
+classDef store fill:#FFF9DB,stroke:#B7791F,stroke-width:1px,color:#333
+classDef risky fill:#FFF5F5,stroke:#E53E3E,stroke-width:2px,color:#333
+classDef infra fill:#FFF9DB,stroke:#B7791F,stroke-width:1px,color:#333
+classDef term fill:#E6FFFA,stroke:#2C7A7B,stroke-width:1px,color:#333
+classDef decision fill:#FFF5F5,stroke:#C53030,stroke-width:1px,color:#333
+
+%% Terminals and actor
+START([Start]):::term
+ADMIN[/Admin or Super Admin/]:::role
+END([End]):::term
+
+%% Stores and infra
+DB[(PostgreSQL)]:::store
+
+%% Processes and decisions
+LOGIN[Login]:::proc
+AUTH{Authentication valid?}:::decision
+RBAC{Role is Admin or Super Admin?}:::decision
+DASH[Admin Dashboard]:::proc
+
+P_USERS[User management: create read update delete]:::proc
+P_DROPS[Dropdown management grade and lens types]:::proc
+P_COUNTERS[Counter management]:::proc
+P_SMS[SMS templates & notification logs]:::proc
+P_ACT[Activity logs read only]:::proc
+P_ANALYTICS[Analytics dashboards]:::proc
+P_REPORTS[Generate reports daily weekly monthly]:::proc
+P_FIX[Fix transactions]:::risky
+CONF_FIX{Confirm fix transactions?}:::decision
+P_RESET[Queue reset admin only]:::risky
+CONF_RESET{Confirm queue reset?}:::decision
+P_HEALTH[System health GET /healthz]:::proc
+ERROR[Show error message]:::proc
+
+%% Flow
+START --> LOGIN --> AUTH
+AUTH -- No --> ERROR --> END
+AUTH -- Yes --> RBAC
+RBAC -- No --> ERROR --> END
+RBAC -- Yes --> DASH
+
+DASH --> P_USERS --> DB
+DASH --> P_DROPS --> DB
+DASH --> P_COUNTERS --> DB
+DASH --> P_SMS --> DB
+DASH --> P_ACT --> DB
+DASH --> P_ANALYTICS --> DB
+DASH --> P_REPORTS --> DB
+
+DASH --> P_FIX
+P_FIX --> CONF_FIX
+CONF_FIX -- Yes --> DB --> DASH
+CONF_FIX -- No --> DASH
+
+DASH --> P_RESET
+P_RESET --> CONF_RESET
+CONF_RESET -- Yes --> DB --> DASH
+CONF_RESET -- No --> DASH
+
+DASH --> P_HEALTH --> DASH
+
+DASH --> END
+
+%% Legend
+LEGEND[Legend\nTerminal: Stadium Start and End\nDecision: Diamond\nProcess: Rectangle\nData store: Cylinder\nRisky operations: Red border]

@@ -1,0 +1,67 @@
+flowchart TD
+
+%% System Flowchart styling
+classDef role fill:#F1F0FF,stroke:#6B5B95,stroke-width:1px,color:#333
+classDef proc fill:#F0FFF4,stroke:#2F855A,stroke-width:1px,color:#333
+classDef store fill:#FFF9DB,stroke:#B7791F,stroke-width:1px,color:#333
+classDef risky fill:#FFF5F5,stroke:#E53E3E,stroke-width:2px,color:#333
+classDef infra fill:#FFF9DB,stroke:#B7791F,stroke-width:1px,color:#333
+classDef term fill:#E6FFFA,stroke:#2C7A7B,stroke-width:1px,color:#333
+classDef decision fill:#FFF5F5,stroke:#C53030,stroke-width:1px,color:#333
+
+START([Start]):::term
+CASHIER[/Cashier/]:::role
+END([End]):::term
+
+DB[(PostgreSQL)]:::store
+WS[WebSocket updates]:::infra
+
+LOGIN[Login]:::proc
+AUTH{Authentication valid?}:::decision
+RBAC{Role is Cashier or Admin?}:::decision
+DASH[Cashier Dashboard]:::proc
+
+P_QUEUE[View queue GET /queue]:::proc
+QUEUE_EMPTY{Queue empty?}:::decision
+P_CALL[Call next or specific customer]:::proc
+
+P_STATUS[Update status: waiting -> serving -> processing -> completed]:::proc
+P_TXN[Create transaction POST /transactions]:::proc
+P_ITEMS[Manage items POST or PUT or DELETE]:::proc
+P_SETTLE[Record settlement POST /settlements]:::proc
+PAY_METHOD{Payment method?}:::decision
+PAY_OK{Settlement successful?}:::decision
+P_LIST[List/filter transactions]:::proc
+P_EXPORT[Export transactions]:::proc
+ERROR[Show error message]:::proc
+
+START --> LOGIN --> AUTH
+AUTH -- No --> ERROR --> END
+AUTH -- Yes --> RBAC
+RBAC -- No --> ERROR --> END
+RBAC -- Yes --> DASH
+
+DASH --> P_QUEUE --> DB
+P_QUEUE --> QUEUE_EMPTY
+QUEUE_EMPTY -- Yes --> DASH
+QUEUE_EMPTY -- No --> P_CALL --> DB
+P_CALL --> WS
+
+P_CALL --> P_STATUS --> DB
+P_STATUS --> WS
+P_STATUS --> P_TXN --> DB
+P_TXN --> P_ITEMS --> DB
+P_ITEMS --> PAY_METHOD
+
+PAY_METHOD -- Cash/Card/Digital --> P_SETTLE --> DB
+P_SETTLE --> PAY_OK
+PAY_OK -- Yes --> P_STATUS --> DB
+PAY_OK -- No --> P_SETTLE
+
+DASH --> P_LIST --> DB
+DASH --> P_EXPORT --> DB
+
+P_STATUS --> END
+
+%% Legend
+LEGEND[Legend\nTerminal: Stadium Start and End\nDecision: Diamond\nProcess: Rectangle\nData store: Cylinder\nInfra: Yellow box]

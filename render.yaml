@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: escashop-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm ci && npm run build:prod
+    startCommand: cd backend && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: escashop-database
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+
+  - type: web
+    name: escashop-frontend
+    env: node
+    plan: free
+    buildCommand: cd frontend && npm ci && npm run build
+    startCommand: cd frontend && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REACT_APP_API_URL
+        value: https://escashop-backend.onrender.com/api
+
+databases:
+  - name: escashop-database
+    databaseName: escashop
+    user: escashop_user
+    plan: free
