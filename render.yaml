@@ -21,8 +21,8 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
-    # Run TypeScript migrations after deploy so SQL paths resolve correctly
-    postDeployCommand: cd backend && npm run migrate:dev
+    # Run TypeScript migrations before switching traffic so SQL paths resolve correctly
+    preDeployCommand: cd backend && npm run migrate:dev
 
     # Optional: persistent disk for uploads (uncomment if needed)
     # disks:
@@ -43,7 +43,7 @@ services:
       - key: REACT_APP_API_URL
         value: https://escashop-backend.onrender.com/api
 
-_databases:
+databases:
   - name: escashop-database
     databaseName: escashop
     user: escashop_user
