@@ -21,8 +21,9 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
-    # Run TypeScript migrations before switching traffic so SQL paths resolve correctly
-    preDeployCommand: cd backend && npm run migrate:dev
+    # Note: Free plan does not support preDeployCommand/postDeployCommand.
+    # After the first deploy, run migrations once from the Render Shell:
+    #   npx ts-node src/migrate.ts
 
     # Optional: persistent disk for uploads (uncomment if needed)
     # disks:
