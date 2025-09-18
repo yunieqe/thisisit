@@ -1,5 +1,5 @@
 [phases.build]
 cmds = ["npm run build"]
 
-[phases.start]
-cmd = "npx serve -s build -l $PORT"
+[start]
+cmd = "node server.js"
