@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
+const host = '0.0.0.0';
 
 // Log all requests for debugging
 app.use((req, res, next) => {
@@ -50,7 +51,7 @@ app.use((err, req, res, next) => {
   res.status(500).send('Internal Server Error');
 });
 
-app.listen(port, () => {
+app.listen(port, host, () => {
   console.log(`Express server is running on port ${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Build directory exists: ${fs.existsSync(buildPath)}`);
