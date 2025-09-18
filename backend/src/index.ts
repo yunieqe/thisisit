@@ -27,9 +27,32 @@ import { DailyQueueScheduler } from './services/DailyQueueScheduler';
 
 const app: express.Application = express();
 const server = createServer(app);
+
+// Build allowed CORS origins primarily from env (frontend domain on Railway)
+function getAllowedOrigins(): string[] {
+  const extra = (process.env.ADDITIONAL_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
+
+  const list = [
+    process.env.FRONTEND_URL || config.FRONTEND_URL || 'http://localhost:3000',
+    // Local dev helpers
+    'http://localhost:3000',
+    'http://localhost:3001',
+    // Optional wildcard for Railway preview apps (enable via env only)
+    process.env.ALLOW_ALL_RAILWAY_SUBDOMAINS === 'true' ? 'https://*.up.railway.app' : undefined,
+    ...extra,
+  ].filter(Boolean) as string[];
+
+  return Array.from(new Set(list));
+}
+
+const allowedOrigins = getAllowedOrigins();
+
 const io = new Server(server, {
   cors: {
-    origin: () => allowedOrigins,
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   }
@@ -53,42 +76,10 @@ app.get('/healthz', (_req, res) => {
 
 // Middleware
 app.use(generalLimiter);
-// CORS configuration with flexible frontend URL support for Railway
-// Build the list primarily from env so it works across environments.
-const dynamicEnvOrigins = (
-  process.env.ADDITIONAL_ALLOWED_ORIGINS || ''
-)
-  .split(',')
-  .map(o => o.trim())
-  .filter(Boolean);
-
-const railwayPublicDomain = process.env.RAILWAY_PUBLIC_DOMAIN
-  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-  : undefined;
-
-const allowedOrigins = Array.from(
-  new Set(
-    [
-      config.FRONTEND_URL || 'http://localhost:3000',
-      process.env.FRONTEND_URL, // explicit override from env
-      railwayPublicDomain, // if Railway exposes a public domain variable
-      // Local dev
-      'http://localhost:3000',
-      'http://localhost:3001',
-      // Optional broad allowance for Railway preview apps (disabled by default)
-      process.env.ALLOW_ALL_RAILWAY_SUBDOMAINS === 'true'
-        ? 'https://*.up.railway.app'
-        : undefined,
-      // Extra origins via comma-separated env
-      ...dynamicEnvOrigins,
-    ].filter(Boolean) as string[]
-  )
-);
-
+// Log the computed CORS origins
 console.log('🌐 [CORS DEBUG] Allowed origins (computed):', allowedOrigins);
 console.log('🌐 [CORS DEBUG] FRONTEND_URL from config:', config.FRONTEND_URL);
 console.log('🌐 [CORS DEBUG] ADDITIONAL_ALLOWED_ORIGINS:', process.env.ADDITIONAL_ALLOWED_ORIGINS);
-console.log('🌐 [CORS DEBUG] RAILWAY_PUBLIC_DOMAIN:', process.env.RAILWAY_PUBLIC_DOMAIN);
 
 app.use(cors({
   origin: (origin, callback) => {
