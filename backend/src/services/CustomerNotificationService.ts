@@ -86,8 +86,9 @@ export class CustomerNotificationService {
               const idxSql = fs.readFileSync(idxPath, 'utf8');
               await pool.query(idxSql);
             }
-          } catch (idxErr) {
-            console.warn('[CUSTOMER_NOTIFICATION] Index migration skipped or failed (non-fatal):', idxErr?.message || idxErr);
+          } catch (idxErr: unknown) {
+            const idxMsg = idxErr instanceof Error ? idxErr.message : String(idxErr);
+            console.warn('[CUSTOMER_NOTIFICATION] Index migration skipped or failed (non-fatal):', idxMsg);
           }
 
           console.log('[CUSTOMER_NOTIFICATION] ensureTables(): Created missing customer_notifications tables');
